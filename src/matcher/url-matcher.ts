@@ -40,7 +40,7 @@ const matcherRegex = (function() {
 			'(',  // *** Capturing group $8, for known a TLD url (ex: google.com)
 				'(//)?',  // *** Capturing group $9 for an optional protocol-relative URL. Must be at the beginning of the string or start with a non-word character (handled later)
 				getDomainNameStr(10) + '\\.',
-				tldRegex.source,
+				tldRegex.source + '$',
 				'(?![-' + alphaNumericCharsStr + '])', // TLD not followed by a letter, behaves like unicode-aware \b
 			')',
 		')',
@@ -136,6 +136,16 @@ export class UrlMatcher extends Matcher {
     protected wordCharRegExp = wordCharRegExp;
 
     /**
+     *  @cfg {boolean} strictTldUrlMatch (required)
+     */
+    protected strictTldUrlMatch: boolean = false;
+
+    /**
+     *  @cfg {boolean} wwwPrefixUrlMatch (required)
+     */
+    protected wwwPrefixUrlMatch: boolean = false;
+
+    /**
      * @method constructor
      * @param {Object} cfg The configuration properties for the Match instance,
      *   specified in an Object (map).
@@ -146,6 +156,8 @@ export class UrlMatcher extends Matcher {
         this.stripPrefix = cfg.stripPrefix;
         this.stripTrailingSlash = cfg.stripTrailingSlash;
         this.decodePercentEncoding = cfg.decodePercentEncoding;
+        this.strictTldUrlMatch = cfg.strictTldUrlMatch;
+        this.wwwPrefixUrlMatch = cfg.wwwPrefixUrlMatch;
     }
 
     /**
@@ -158,7 +170,9 @@ export class UrlMatcher extends Matcher {
             decodePercentEncoding = this.decodePercentEncoding,
             tagBuilder = this.tagBuilder,
             matches: Match[] = [],
-            match: RegExpExecArray | null;
+            match: RegExpExecArray | null,
+            strictTldUrlMatch = this.strictTldUrlMatch,
+            wwwPrefixUrlMatch = this.wwwPrefixUrlMatch;
 
         while ((match = matcherRegex.exec(text)) !== null) {
             let matchStr = match[0],
@@ -203,7 +217,7 @@ export class UrlMatcher extends Matcher {
                 matchStr = matchStr.substr(0, matchStr.length - 1); // remove the trailing ")"
             } else {
                 // Handle an invalid character after the TLD
-                let pos = this.matchHasInvalidCharAfterTld(matchStr, schemeUrlMatch);
+                let pos = this.matchHasInvalidCharAfterTld(matchStr, schemeUrlMatch, strictTldUrlMatch);
                 if (pos > -1) {
                     matchStr = matchStr.substr(0, pos); // remove the trailing invalid chars
                 }
@@ -234,6 +248,19 @@ export class UrlMatcher extends Matcher {
                     ? 'www'
                     : 'tld',
                 protocolUrlMatch = !!schemeUrlMatch;
+
+            
+            if (!protocolUrlMatch && wwwPrefixUrlMatch) {
+                const urlPrefix = matchStr.split('.').shift() || '';
+                const urlNormalized = urlPrefix.toLowerCase();
+                const haveWWW = urlNormalized.match(/www/);
+                if (haveWWW) {
+                    const index = haveWWW.index || 0;
+                    matchStr = matchStr.substr(index);
+                    offset += index;
+                }
+            }
+
 
             matches.push(
                 new UrlMatch({
@@ -335,7 +362,7 @@ export class UrlMatcher extends Matcher {
      * @return {Number} the position where the invalid character was found. If
      *   no such character was found, returns -1
      */
-    protected matchHasInvalidCharAfterTld(urlMatch: string, schemeUrlMatch: string) {
+    protected matchHasInvalidCharAfterTld(urlMatch: string, schemeUrlMatch: string, strictTldUrlMatch: boolean) {
         if (!urlMatch) {
             return -1;
         }
@@ -353,7 +380,23 @@ export class UrlMatcher extends Matcher {
             return -1;
         }
 
+        let diff = 0;
+        if(strictTldUrlMatch) {
+            const strictTldRegex = new RegExp('^'.concat(tldRegex.source, '$'));
+            const tld = res[1].split('.').pop() || '';
+            const tldLength = tld.length;
+            for (let i = tldLength; i >= 0; i--) {
+                var subTld = tld.slice(0, i);
+                if (strictTldRegex.exec(subTld) !== null) {
+                    diff = tldLength - subTld.length;
+                    break;
+                }
+            }
+        }
+
         offset += res[1].length;
+        if (diff) return offset -= diff;
+
         urlMatch = urlMatch.slice(res[1].length);
         if (/^[^-.A-Za-z0-9:\/?#]/.test(urlMatch)) {
             return offset;
@@ -367,4 +410,6 @@ export interface UrlMatcherConfig extends MatcherConfig {
     stripPrefix: Required<StripPrefixConfigObj>;
     stripTrailingSlash: boolean;
     decodePercentEncoding: boolean;
+    strictTldUrlMatch: boolean;
+    wwwPrefixUrlMatch: boolean;
 }

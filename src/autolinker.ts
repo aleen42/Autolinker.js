@@ -394,6 +394,38 @@ export default class Autolinker {
     private readonly decodePercentEncoding: boolean = true; // default value just to get the above doc comment in the ES5 output and documentation generator
 
     /**
+     * @cfg {Boolean/Object} [strictTld=true]
+     *
+     * `true` use strict tld RegExp to match URL links' text, `false` otherwise. Defaults to
+     * strictTld: {
+     *     urlMatch : false,
+     *     emailMatch    : true
+     * }
+     *
+     * Examples:
+     *
+     *     strictTld: true
+     *
+     *     // or
+     *
+     *     strictTld: {
+     *         urlMatch : true,
+     *         emailMatch    : true
+     *     }
+     */
+    private readonly strictTld: Required<StrictTldConfigObj> = { urlMatch: false, emailMatch: true };
+
+    /**
+     * @cfg {Boolean} [wwwPrefixUrlMatch=false]
+     *
+     * `true` to move 'www' prefix to the beginning of the URL matches, `false` to ignore 'www' prefix.
+     *
+     *  Example when `true`: '测试www.google.com/' will be displayed as
+     *  '测试<a href="http://www.google.com">www.google.com</a>'.
+     */
+    private readonly wwwPrefixUrlMatch: boolean = false;
+
+    /**
      * @cfg {Number/Object} [truncate=0]
      *
      * ## Number Form
@@ -574,6 +606,11 @@ export default class Autolinker {
         this.className = cfg.className || this.className;
         this.replaceFn = cfg.replaceFn || this.replaceFn;
         this.context = cfg.context || this;
+        this.strictTld = this.normalizeStrictTldCfg(cfg.strictTld);
+        this.wwwPrefixUrlMatch =
+            typeof cfg.wwwPrefixUrlMatch === 'boolean'
+                ? cfg.wwwPrefixUrlMatch
+                : this.wwwPrefixUrlMatch;
     }
 
     /**
@@ -648,6 +685,28 @@ export default class Autolinker {
                 length: Number.POSITIVE_INFINITY,
                 location: 'end',
             });
+        }
+    }
+
+    /**
+     * Normalizes the strictTld config into an Object with 2 properties:
+     * `urlMatch` and `emailMatch` all Booleans.
+     *
+     * @private
+     * @param {Boolean/Object} strictTld
+     * @return {Object}
+     */
+     private normalizeStrictTldCfg(strictTld: StrictTldConfig | undefined): Required<StrictTldConfigObj> {
+        if (strictTld == null) strictTld = true; // default to `true`
+
+        if (typeof strictTld === 'boolean') {
+            return { urlMatch: strictTld, emailMatch: strictTld };
+        } else {
+            // object form
+            return {
+                urlMatch: typeof strictTld.urlMatch === 'boolean' ? strictTld.urlMatch : false,
+                emailMatch: typeof strictTld.emailMatch === 'boolean' ? strictTld.emailMatch : true,
+            };
         }
     }
 
@@ -983,7 +1042,7 @@ export default class Autolinker {
                     tagBuilder,
                     serviceName: this.hashtag as HashtagServices,
                 }),
-                new EmailMatcher({ tagBuilder }),
+                new EmailMatcher({ tagBuilder, strictTldEmailMatch: this.strictTld.emailMatch }),
                 new PhoneMatcher({ tagBuilder }),
                 new MentionMatcher({
                     tagBuilder,
@@ -994,6 +1053,8 @@ export default class Autolinker {
                     stripPrefix: this.stripPrefix,
                     stripTrailingSlash: this.stripTrailingSlash,
                     decodePercentEncoding: this.decodePercentEncoding,
+                    strictTldUrlMatch: this.strictTld.urlMatch,
+                    wwwPrefixUrlMatch: this.wwwPrefixUrlMatch
                 }),
             ];
 
@@ -1040,6 +1101,8 @@ export interface AutolinkerConfig {
     context?: any;
     sanitizeHtml?: boolean;
     decodePercentEncoding?: boolean;
+    strictTld?: StrictTldConfig;
+    wwwPrefixUrlMatch?: boolean;
 }
 
 export type UrlsConfig = boolean | UrlsConfigObj;
@@ -1071,3 +1134,9 @@ export type MentionServices = 'twitter' | 'instagram' | 'soundcloud' | 'tiktok';
 
 export type ReplaceFn = (match: Match) => ReplaceFnReturn;
 export type ReplaceFnReturn = boolean | string | HtmlTag | null | undefined | void;
+
+export type StrictTldConfig = boolean | StrictTldConfigObj;
+export interface StrictTldConfigObj {
+    urlMatch?: boolean;
+    emailMatch?: boolean;
+}

@@ -1,4 +1,4 @@
-import { Matcher } from './matcher';
+import { Matcher, MatcherConfig } from './matcher';
 import { alphaNumericAndMarksCharsStr, domainNameCharRegex } from '../regex-lib';
 import { EmailMatch } from '../match/email-match';
 import { Match } from '../match/match';
@@ -36,6 +36,21 @@ export class EmailMatcher extends Matcher {
      * the string is a valid TLD
      */
     protected strictTldRegex = strictTldRegex;
+    
+    /**
+     * @cfg {Boolean} strictTldEmailMatch(require)
+     */
+    protected strictTldEmailMatch: boolean = true;
+
+    /**
+     * @method constructor
+     * @param {Object} cfg The configuration properties for the Match instance,
+     *   specified in an Object (map).
+     */
+    constructor(cfg: EmailMatcherConfig) {
+        super(cfg);
+        this.strictTldEmailMatch = cfg.strictTldEmailMatch;
+    }
 
     /**
      * @inheritdoc
@@ -46,7 +61,8 @@ export class EmailMatcher extends Matcher {
             strictTldRegex = this.strictTldRegex,
             matches: Match[] = [],
             len = text.length,
-            noCurrentEmailMatch = new CurrentEmailMatch();
+            noCurrentEmailMatch = new CurrentEmailMatch(),
+            strictTldEmailMatch = this.strictTldEmailMatch;
 
         // for matching a 'mailto:' prefix
         const mailtoTransitions = {
@@ -291,7 +307,7 @@ export class EmailMatcher extends Matcher {
                     : matchedText;
 
                 // if the email address has a valid TLD, add it to the list of matches
-                if (doesEmailHaveValidTld(emailAddress)) {
+                if (!strictTldEmailMatch || doesEmailHaveValidTld(emailAddress)) {
                     matches.push(
                         new EmailMatch({
                             tagBuilder: tagBuilder,
@@ -345,4 +361,8 @@ class CurrentEmailMatch {
         this.hasMailtoPrefix = !!cfg.hasMailtoPrefix;
         this.hasDomainDot = !!cfg.hasDomainDot;
     }
+}
+
+export interface EmailMatcherConfig extends MatcherConfig {
+    strictTldEmailMatch: boolean;
 }
