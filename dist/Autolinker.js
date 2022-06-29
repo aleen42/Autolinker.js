@@ -2631,7 +2631,7 @@
                 var tldLength = tld.length;
                 for (var i = tldLength; i >= 0; i--) {
                     var subTld = tld.slice(0, i);
-                    if (strictTldRegex.exec(subTld) !== null) {
+                    if (strictTldRegex.test(subTld)) {
                         diff = tldLength - subTld.length;
                         break;
                     }

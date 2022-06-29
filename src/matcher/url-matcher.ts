@@ -217,7 +217,11 @@ export class UrlMatcher extends Matcher {
                 matchStr = matchStr.substr(0, matchStr.length - 1); // remove the trailing ")"
             } else {
                 // Handle an invalid character after the TLD
-                let pos = this.matchHasInvalidCharAfterTld(matchStr, schemeUrlMatch, strictTldUrlMatch);
+                let pos = this.matchHasInvalidCharAfterTld(
+                    matchStr,
+                    schemeUrlMatch,
+                    strictTldUrlMatch
+                );
                 if (pos > -1) {
                     matchStr = matchStr.substr(0, pos); // remove the trailing invalid chars
                 }
@@ -249,7 +253,6 @@ export class UrlMatcher extends Matcher {
                     : 'tld',
                 protocolUrlMatch = !!schemeUrlMatch;
 
-            
             if (!protocolUrlMatch && wwwPrefixUrlMatch) {
                 const urlPrefix = matchStr.split('.').shift() || '';
                 const urlNormalized = urlPrefix.toLowerCase();
@@ -260,7 +263,6 @@ export class UrlMatcher extends Matcher {
                     offset += index;
                 }
             }
-
 
             matches.push(
                 new UrlMatch({
@@ -362,7 +364,11 @@ export class UrlMatcher extends Matcher {
      * @return {Number} the position where the invalid character was found. If
      *   no such character was found, returns -1
      */
-    protected matchHasInvalidCharAfterTld(urlMatch: string, schemeUrlMatch: string, strictTldUrlMatch: boolean) {
+    protected matchHasInvalidCharAfterTld(
+        urlMatch: string,
+        schemeUrlMatch: string,
+        strictTldUrlMatch: boolean
+    ) {
         if (!urlMatch) {
             return -1;
         }
@@ -375,27 +381,26 @@ export class UrlMatcher extends Matcher {
 
         // prettier-ignore
         let re = new RegExp( "^((.?\/\/)?[-." + alphaNumericAndMarksCharsStr + "]*[-" + alphaNumericAndMarksCharsStr + "]\\.[-" + alphaNumericAndMarksCharsStr + "]+)" );
-		let res = re.exec(urlMatch);
+        let res = re.exec(urlMatch);
         if (res === null) {
             return -1;
         }
 
         let diff = 0;
-        if(strictTldUrlMatch) {
+        if (strictTldUrlMatch) {
             const strictTldRegex = new RegExp('^'.concat(tldRegex.source, '$'));
             const tld = res[1].split('.').pop() || '';
             const tldLength = tld.length;
             for (let i = tldLength; i >= 0; i--) {
                 var subTld = tld.slice(0, i);
-                if (strictTldRegex.exec(subTld) !== null) {
+                if (strictTldRegex.test(subTld)) {
                     diff = tldLength - subTld.length;
                     break;
                 }
             }
         }
-
         offset += res[1].length;
-        if (diff) return offset -= diff;
+        if (diff) return (offset -= diff);
 
         urlMatch = urlMatch.slice(res[1].length);
         if (/^[^-.A-Za-z0-9:\/?#]/.test(urlMatch)) {
