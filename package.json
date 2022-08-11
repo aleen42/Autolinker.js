@@ -1,6 +1,6 @@
 {
-    "name": "autolinker",
-    "version": "3.15.0",
+    "name": "@aleen42/autolinker",
+    "version": "3.15.0-beta.0",
     "description": "Utility to automatically link the URLs, email addresses, phone numbers, hashtags, and mentions (Twitter, Instagram) in a given block of text/HTML",
     "main": "./dist/commonjs/index.js",
     "typings": "./dist/commonjs/index.d.ts",
@@ -9,12 +9,12 @@
         "dist"
     ],
     "scripts": {
-        "build": "npm-run-all clean update-tld-regex build:src build:docs build:live-example",
+        "build": "npm-run-all clean update-tld-regex build:src build:live-example",
         "build:docs": "ts-node scripts/build-docs.ts",
         "build:src": "ts-node scripts/build.ts",
         "build:live-example": "webpack",
         "clean": "rimraf dist",
-        "prepublishOnly": "npm-run-all build test",
+        "prepublishOnly": "npm-run-all build",
         "start": "webpack serve --open",
         "test": "npm-run-all test:unit test:integration",
         "test:unit": "node --require=ts-node/register node_modules/jasmine/bin/jasmine.js \"tests/**/*.spec.ts\"",
